@@ -321,7 +321,7 @@ void BOARD::Display(FILE* flog) const {
 #endif
 }
 
-int BOARD::MoveGen(MOVLST &lst) const {
+int BOARD::MoveGen(MOVLST &lst, bool quiescent) const {
 	if(who==-1)return false;
 	lst.num=0;
 	int x=rand()%32;
@@ -350,6 +350,7 @@ int BOARD::MoveGen(MOVLST &lst) const {
 			}
 		}
 	}
+	if(quiescent) return lst.num;
 
 	x=rand()%32;
 	for(POS p=x;p<x+32;p++) {
@@ -409,13 +410,13 @@ bool BOARD::ChkLose() const {
 	if(!fLive)return true;
 
 	MOVLST lst;
-	return !fDark&&MoveGen(lst)==0;
+	return !fDark&&MoveGen(lst, false)==0;
 }
 
 bool BOARD::ChkValid(MOV m) const {
 	if(m.ed!=m.st) {
 		MOVLST lst;
-		MoveGen(lst);
+		MoveGen(lst, false);
 		for(int i=0;i<lst.num;i++)if(m==lst.mov[i])return true;
 	} else {
 		if(m.st<0||m.st>=32)return false;

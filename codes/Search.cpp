@@ -40,13 +40,16 @@ SCORE NegaScout(BOARD &board, int depth, SCORE alpha, SCORE beta, CLR view, vect
 	fprintf(flog, "abc\n");
 	//todo: hash
 	MOVLST lst;
-	board.MoveGen(lst); //todo: better move ordering
+	board.MoveGen(lst, false);
 	
-	if(depth==0){ //terminate
-		//todo: quiescent search, timing constraint
-		return evaluate(board, view, mvlist);
+	//terminate //todo: timing constraint
+	if(depth<=0){ 
+		//quiescent search
+		board.MoveGen(lst, true); //reproduce move list : true for quiescent search
 	}
-	
+	if(lst.num==0) return evaluate(board, view, mvlist);
+
+	//search deeper
 	SCORE m=-INF, n=beta; //fail soft
 	for(int i=0;i<=lst.num;i++){
 		vector<MOV> tmpList=mvlist;
@@ -56,9 +59,9 @@ SCORE NegaScout(BOARD &board, int depth, SCORE alpha, SCORE beta, CLR view, vect
 			tmpBoard.Move(lst.mov[i]); //do move
 			tmpList.push_back(lst.mov[i]);
 		}
-		else{ //check if can flip
-			if(unflipCnt>0){
-				tmpBoard.who^=1; //assume flip //todo: check if can flip
+		else{ //assume flip
+			if(depth>0 && unflipCnt>0){ //not quiescent search & can flip
+				tmpBoard.who^=1;
 				tmpList.push_back(MOV(-1,-1));
 				isFlip=1;
 			}
@@ -68,7 +71,7 @@ SCORE NegaScout(BOARD &board, int depth, SCORE alpha, SCORE beta, CLR view, vect
 		int t= -NegaScout(tmpBoard, depth-1, -n, -max(alpha,m), view^1, tmpList, unflipCnt-isFlip); //null window search
 
 		if(t>m){
-			if(n==beta || depth<3 || t>=beta) m=t; //first branch || depth<3(scout returns exact value) || fali high 
+			if(n==beta || (depth>0 && depth<3) || t>=beta) m=t; //first branch || depth<3(scout returns exact value) || fali high 
 			else m= -NegaScout(tmpBoard, depth-1, -beta, -t, view^1, tmpList, unflipCnt-isFlip); //re-search
 		}
 
@@ -100,7 +103,7 @@ MOV genMove(const BOARD &board){
 	SCORE mvScore=-INF;
 	MOV best_mv, best_flip;
 
-	board.MoveGen(lst);
+	board.MoveGen(lst, false);
 	for(int i=0;i<lst.num;i++) {
 		BOARD tmpBoard(board);
 		tmpBoard.Move(lst.mov[i]);

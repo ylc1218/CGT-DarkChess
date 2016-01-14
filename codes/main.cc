@@ -58,7 +58,7 @@ SCORE SearchMax(const BOARD &B,int dep,int cut) {
 	if(B.ChkLose())return -WIN;
 
 	MOVLST lst;
-	if(cut==0||TimesUp()||B.MoveGen(lst)==0)return +Eval(B);
+	if(cut==0||TimesUp()||B.MoveGen(lst, false)==0)return +Eval(B);
 
 	SCORE ret=-INF;
 	for(int i=0;i<lst.num;i++) {
@@ -74,7 +74,7 @@ SCORE SearchMin(const BOARD &B,int dep,int cut) {
 	if(B.ChkLose())return +WIN;
 
 	MOVLST lst;
-	if(cut==0||TimesUp()||B.MoveGen(lst)==0)return -Eval(B);
+	if(cut==0||TimesUp()||B.MoveGen(lst, false)==0)return -Eval(B);
 
 	SCORE ret=+INF;
 	for(int i=0;i<lst.num;i++) {
