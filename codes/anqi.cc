@@ -324,20 +324,64 @@ void BOARD::Display(FILE* flog) const {
 int BOARD::MoveGen(MOVLST &lst) const {
 	if(who==-1)return false;
 	lst.num=0;
-	for(POS p=0;p<32;p++) {
-		const FIN pf=fin[p];
+	int x=rand()%32;
+	for(POS p=x;p<x+32;p++) {
+		const FIN pf=fin[p%32];
 		if(GetColor(pf)!=who)continue; //not self piece
 		const LVL pl=GetLevel(pf);
+		if(pl!=LVL_C){ //not cannon: check eat
+			for(int z=0;z<4;z++) { //adjacent location
+				const POS q=ADJ[p%32][z];
+				if(q==-1)continue; //boarder
+				const FIN qf=fin[q]; //adjacent piece
+				
+				if(qf!=FIN_E && ChkEats(pf,qf)) lst.mov[lst.num++]=MOV(p%32,q);
+			}
+		}
+		else{ //for cannon: check eat
+			for(int z=0;z<4;z++) { 
+				int c=0;
+				for(POS q=p%32;(q=ADJ[q][z])!=-1;) {
+					const FIN qf=fin[q];
+					if(qf==FIN_E||++c!=2)continue;
+					if(qf!=FIN_X&&GetColor(qf)!=who)lst.mov[lst.num++]=MOV(p%32,q);
+					break;
+				}
+			}
+		}
+	}
+
+	x=rand()%32;
+	for(POS p=x;p<x+32;p++) {
+		const FIN pf=fin[p%32];
+		if(GetColor(pf)!=who)continue; //not self piece
 		for(int z=0;z<4;z++) { //adjacent location
-			const POS q=ADJ[p][z];
+			const POS q=ADJ[p%32][z];
 			if(q==-1)continue; //boarder
 			const FIN qf=fin[q]; //adjacent piece
-			if(pl!=LVL_C){if(!ChkEats(pf,qf))continue;} //my piece not cannon and cant eat adjacent piece 
-			else if(qf!=FIN_E)continue; //cannon: cant move to adjacent if not empty
+			if(qf==FIN_E) lst.mov[lst.num++]=MOV(p%32,q);
+		}
+	}
+	return lst.num;
+}
+
+/*int BOARD::MoveGen(MOVLST &lst) const {
+	if(who==-1)return false;
+	lst.num=0;
+	for(POS p=0;p<32;p++) {
+		const FIN pf=fin[p];
+		if(GetColor(pf)!=who)continue;
+		const LVL pl=GetLevel(pf);
+		for(int z=0;z<4;z++) {
+			const POS q=ADJ[p][z];
+			if(q==-1)continue;
+			const FIN qf=fin[q];
+			if(pl!=LVL_C){if(!ChkEats(pf,qf))continue;}
+			else if(qf!=FIN_E)continue;
 			lst.mov[lst.num++]=MOV(p,q);
 		}
 		if(pl!=LVL_C)continue;
-		for(int z=0;z<4;z++) { //for cannon
+		for(int z=0;z<4;z++) {
 			int c=0;
 			for(POS q=p;(q=ADJ[q][z])!=-1;) {
 				const FIN qf=fin[q];
@@ -348,7 +392,7 @@ int BOARD::MoveGen(MOVLST &lst) const {
 		}
 	}
 	return lst.num;
-}
+}*/
 
 bool BOARD::ChkLose() const {
 	if(who==-1)return false;

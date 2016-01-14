@@ -8,6 +8,7 @@
 #define INF 1000001
 #define WIN 1000000
 #define SEARCH_MV_DEP 6
+#define SEARCH_FLIP_DEP 3
 using namespace std;
 
 typedef int SCORE;
@@ -35,13 +36,13 @@ SCORE evaluate(const BOARD &board, CLR view, vector<MOV> mvlist){ //evaluate by 
 	return cnt[view]-cnt[view^1];
 }
 
-SCORE NegaScout(BOARD &board, int depth, SCORE alpha, SCORE beta, CLR view, vector<MOV> mvlist){
+SCORE NegaScout(BOARD &board, int depth, SCORE alpha, SCORE beta, CLR view, vector<MOV> mvlist, int unflipCnt){
 	fprintf(flog, "abc\n");
 	//todo: hash
 	MOVLST lst;
 	board.MoveGen(lst); //todo: better move ordering
 	
-	if(depth==0 || lst.num==0){ //terminate
+	if(depth==0){ //terminate
 		//todo: quiescent search, timing constraint
 		return evaluate(board, view, mvlist);
 	}
@@ -50,31 +51,25 @@ SCORE NegaScout(BOARD &board, int depth, SCORE alpha, SCORE beta, CLR view, vect
 	for(int i=0;i<=lst.num;i++){
 		vector<MOV> tmpList=mvlist;
 		BOARD tmpBoard(board);
+		int isFlip=0;
 		if(i<lst.num){
 			tmpBoard.Move(lst.mov[i]); //do move
 			tmpList.push_back(lst.mov[i]);
 		}
 		else{ //check if can flip
-			bool canFlip=false;
-			for(int i=0;i<14;i++){
-				if(tmpBoard.cnt[i]>0){
-					tmpBoard.cnt[i]--;
-					canFlip=true;
-					break;
-				}
-			}
-			if(canFlip){
+			if(unflipCnt>0){
 				tmpBoard.who^=1; //assume flip //todo: check if can flip
 				tmpList.push_back(MOV(-1,-1));
+				isFlip=1;
 			}
 			else continue;
 		}
 
-		int t= -NegaScout(tmpBoard, depth-1, -n, -max(alpha,m), view^1, tmpList); //null window search
+		int t= -NegaScout(tmpBoard, depth-1, -n, -max(alpha,m), view^1, tmpList, unflipCnt-isFlip); //null window search
 
 		if(t>m){
 			if(n==beta || depth<3 || t>=beta) m=t; //first branch || depth<3(scout returns exact value) || fali high 
-			else m= -NegaScout(tmpBoard, depth-1, -beta, -t, view, tmpList); //re-search
+			else m= -NegaScout(tmpBoard, depth-1, -beta, -t, view^1, tmpList, unflipCnt-isFlip); //re-search
 		}
 
 		if(m>=beta){
@@ -95,11 +90,15 @@ MOV genMove(const BOARD &board){
 		printf("%d\n",p);
 		return MOV(p,p);
 	}
+	//search for unfilp
+	vector<FIN> unflipFin;
+	for(int i=0;i<14;i++)
+		if(board.cnt[i]>0) unflipFin.push_back(FIN(i));
 
 	//nega scout (search for move)
 	MOVLST lst;
 	SCORE mvScore=-INF;
-	MOV best_mv;
+	MOV best_mv, best_flip;
 
 	board.MoveGen(lst);
 	for(int i=0;i<lst.num;i++) {
@@ -107,7 +106,7 @@ MOV genMove(const BOARD &board){
 		tmpBoard.Move(lst.mov[i]);
 		vector<MOV> mvlist;
 		mvlist.push_back(lst.mov[i]);
-		SCORE s=-NegaScout(tmpBoard, SEARCH_MV_DEP, -INF, INF, board.who^1, mvlist);
+		SCORE s=-NegaScout(tmpBoard, SEARCH_MV_DEP, -INF, INF, tmpBoard.who, mvlist, unflipFin.size());
 		fprintf(flog, "mv=%d-%d, score=%d\n", lst.mov[i].st, lst.mov[i].ed, s);
 		if(s>mvScore){
 			mvScore=s;
@@ -116,15 +115,36 @@ MOV genMove(const BOARD &board){
 	}
 	fprintf(flog, "best score:%d, best_mv=(%d,%d)\n", mvScore, best_mv.st, best_mv.ed);
 	fflush(flog);
-	//todo: search for flip
-	vector<MOV> mvlist;
-	if(mvScore> evaluate(board, board.who, 	mvlist))return best_mv;
+	//if(mvScore > evaluate(board, board.who, mvlist))return best_mv;
+	
+	//nega scout (search for flip)
+	int best_gt=-INF, best_sum=-INF;
+	SCORE fiipScore=-INF;
+	
+	for(p=0;p<32;p++){
+		int gt=0, sum=0;
+		if(board.fin[p]==FIN_X){
+			for(int j=unflipFin.size()-1;j>=0;j--){
+				int cnt=board.cnt[unflipFin[j]];
+				BOARD tmpBoard(board);
+				tmpBoard.Flip(p, unflipFin[j]);
 
-	// flip (check if still can flip)
-	int c=0;
-	for(p=0;p<32;p++)if(board.fin[p]==FIN_X)c++;
-	if(c==0)return best_mv; //cant flip
-	c=rand()%c;
-	for(p=0;p<32;p++)if(board.fin[p]==FIN_X&&--c<0)break;
-	return MOV(p,p);
+				vector<MOV> mvlist;
+				mvlist.push_back(MOV(p,p));
+				SCORE s = -NegaScout(tmpBoard, SEARCH_FLIP_DEP, -INF, INF, tmpBoard.who, mvlist, unflipFin.size()-1);
+				fprintf(flog, "mv=%d-%d, score=%d\n", p, unflipFin[j], s);
+				if(s>mvScore) gt+=cnt;
+				else if(s<mvScore) gt-=cnt;
+				sum+=(s-mvScore)*cnt;
+
+				if(gt>best_gt || (gt==best_gt && sum>best_sum)){
+					best_gt=gt, best_sum=sum, best_flip=MOV(p,p);
+					fiipScore=s;
+				}
+			}
+		}
+	}
+	fprintf(flog, "best flip score:%d, best_flip=(%d,%d)\n", fiipScore, best_flip.st, best_flip.ed);
+
+	return best_gt>=0 ? best_flip : best_mv;
 }
