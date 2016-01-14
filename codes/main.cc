@@ -12,6 +12,7 @@
 #include"anqi.hh"
 #include"Protocol.h"
 #include"ClientSocket.h"
+#include"Search.h"
 
 #ifdef _WINDOWS
 #include<windows.h>
@@ -93,7 +94,7 @@ MOV Play(const BOARD &B) {
 	Tick=clock();
 	TimeOut = (DEFAULTTIME-3)*CLOCKS_PER_SEC;
 #endif
-	POS p; int c=0;
+	/*POS p; int c=0;
 
 	// 新遊戲？隨機翻子
 	if(B.who==-1){p=rand()%32;printf("%d\n",p);return MOV(p,p);}
@@ -106,7 +107,8 @@ MOV Play(const BOARD &B) {
 	if(c==0)return BestMove;
 	c=rand()%c;
 	for(p=0;p<32;p++)if(B.fin[p]==FIN_X&&--c<0)break;
-	return MOV(p,p);
+	return MOV(p,p);*/
+	return genMove(B);
 }
 
 FIN type2fin(int type) {

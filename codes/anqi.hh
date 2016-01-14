@@ -63,6 +63,7 @@ struct BOARD {
 	void NewGame();              // 開新遊戲
 	int  LoadGame(const char*);  // 載入遊戲並傳回時限(單位:秒)
 	void Display() const;        // 顯示到 stderr 上
+	void Display(FILE* flog) const;
 	int  MoveGen(MOVLST&) const; // 列出所有走法(走子+吃子,不包括翻子)
 	                             // 回傳走法數量
 	bool ChkLose() const;        // 檢查當前玩家(who)是否輸了

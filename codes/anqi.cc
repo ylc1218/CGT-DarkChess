@@ -258,23 +258,86 @@ void BOARD::Display() const {
 #endif
 }
 
+
+void BOARD::Display(FILE* flog) const {
+#ifdef _WINDOWS
+	HANDLE hErr=GetStdHandle(STD_ERROR_HANDLE);
+#endif
+	for(int i=0;i<8;i++) {
+#ifdef _WINDOWS
+		SetConsoleTextAttribute(hErr,8);
+#endif
+		for(int j=0;j<4;j++)fprintf(flog,"[%02d]",mkpos(i,j));
+		if(i==2) {
+#ifdef _WINDOWS
+			SetConsoleTextAttribute(hErr,12);
+#endif
+			fputs("  ",flog);
+			for(int j=0;j<7;j++)for(int k=0;k<cnt[j];k++)fputs(nam[j],flog);
+		}
+		fputc('\n',flog);
+		for(int j=0;j<4;j++) {
+			const FIN f=fin[mkpos(i,j)];
+			const CLR c=GetColor(f);
+#ifdef _WINDOWS
+			SetConsoleTextAttribute(hErr,(c!=-1?12-c*2:7));
+#endif
+			fprintf(flog," %s ",nam[fin[mkpos(i,j)]]);
+		}
+		if(i==0) {
+#ifdef _WINDOWS
+			SetConsoleTextAttribute(hErr,7);
+#endif
+			fputs("  輪到 ",flog);
+			if(who==0) {
+#ifdef _WINDOWS
+				SetConsoleTextAttribute(hErr,12);
+#endif
+				fputs("紅方",flog);
+			} else if(who==1) {
+#ifdef _WINDOWS
+				SetConsoleTextAttribute(hErr,10);
+#endif
+				fputs("黑方",flog);
+			} else {
+				fputs("？？",flog);
+			}
+		} else if(i==1) {
+#ifdef _WINDOWS
+			SetConsoleTextAttribute(hErr,7);
+#endif
+			fputs("  尚未翻出：",flog);
+		} else if(i==2) {
+#ifdef _WINDOWS
+			SetConsoleTextAttribute(hErr,10);
+#endif
+			fputs("  ",flog);
+			for(int j=7;j<14;j++)for(int k=0;k<cnt[j];k++)fputs(nam[j],flog);
+		}
+		fputc('\n',flog);
+	}
+#ifdef _WINDOWS
+	SetConsoleTextAttribute(hErr,7);
+#endif
+}
+
 int BOARD::MoveGen(MOVLST &lst) const {
 	if(who==-1)return false;
 	lst.num=0;
 	for(POS p=0;p<32;p++) {
 		const FIN pf=fin[p];
-		if(GetColor(pf)!=who)continue;
+		if(GetColor(pf)!=who)continue; //not self piece
 		const LVL pl=GetLevel(pf);
-		for(int z=0;z<4;z++) {
+		for(int z=0;z<4;z++) { //adjacent location
 			const POS q=ADJ[p][z];
-			if(q==-1)continue;
-			const FIN qf=fin[q];
-			if(pl!=LVL_C){if(!ChkEats(pf,qf))continue;}
-			else if(qf!=FIN_E)continue;
+			if(q==-1)continue; //boarder
+			const FIN qf=fin[q]; //adjacent piece
+			if(pl!=LVL_C){if(!ChkEats(pf,qf))continue;} //my piece not cannon and cant eat adjacent piece 
+			else if(qf!=FIN_E)continue; //cannon: cant move to adjacent if not empty
 			lst.mov[lst.num++]=MOV(p,q);
 		}
 		if(pl!=LVL_C)continue;
-		for(int z=0;z<4;z++) {
+		for(int z=0;z<4;z++) { //for cannon
 			int c=0;
 			for(POS q=p;(q=ADJ[q][z])!=-1;) {
 				const FIN qf=fin[q];
