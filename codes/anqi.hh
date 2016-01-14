@@ -28,6 +28,7 @@ enum FIN {
 	FIN_P= 6 /* 'P' §L */ , FIN_p=13 /* 'p' ¨ò */
 };
 
+
 // (position)
 //  0  1  2  3
 //  4  5  6  7

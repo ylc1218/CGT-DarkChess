@@ -1,5 +1,5 @@
 *.exe
 *.out
 *.zip
-papers/* #copyrighted
+papers/*
 tcg_2015_final_project/*

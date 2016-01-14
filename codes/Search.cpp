@@ -11,6 +11,7 @@
 using namespace std;
 
 typedef int SCORE;
+const int STAT_VAL[]={12863,6431,3215,1607,803,401,200};
 FILE* flog = fopen("mylog.txt", "w+");
 
 
@@ -19,10 +20,16 @@ SCORE evaluate(const BOARD &board, CLR view, vector<MOV> mvlist){ //evaluate by 
 	for(int i=0;i<mvlist.size();i++) fprintf(flog, "(%d-%d) ", mvlist[i].st, mvlist[i].ed);
 	fprintf(flog,"\n");
 	board.Display(flog);
+
 	//todo: advanced evaluating function
 	int cnt[2]={0,0};
-	for(POS p=0;p<32;p++){const CLR c=GetColor(board.fin[p]);if(c!=-1)cnt[c]++;}
-	for(int i=0;i<14;i++)cnt[GetColor(FIN(i))]+=board.cnt[i];
+	for(POS p=0;p<32;p++){
+		const CLR c=GetColor(board.fin[p]);
+		if(c!=-1) cnt[c]+=STAT_VAL[GetLevel(board.fin[p])];
+	}
+	for(int i=0;i<14;i++)
+		cnt[GetColor(FIN(i))]+=board.cnt[i]*STAT_VAL[GetLevel(FIN(i))];
+	
 	fprintf(flog, "s=%d (%d)\n", cnt[view]-cnt[view^1], view);
 	fflush(flog);
 	return cnt[view]-cnt[view^1];
@@ -47,16 +54,27 @@ SCORE NegaScout(BOARD &board, int depth, SCORE alpha, SCORE beta, CLR view, vect
 			tmpBoard.Move(lst.mov[i]); //do move
 			tmpList.push_back(lst.mov[i]);
 		}
-		else{
-			tmpBoard.who^=1; //assume flip //todo: check if can flip
-			tmpList.push_back(MOV(-1,-1));
+		else{ //check if can flip
+			bool canFlip=false;
+			for(int i=0;i<14;i++){
+				if(tmpBoard.cnt[i]>0){
+					tmpBoard.cnt[i]--;
+					canFlip=true;
+					break;
+				}
+			}
+			if(canFlip){
+				tmpBoard.who^=1; //assume flip //todo: check if can flip
+				tmpList.push_back(MOV(-1,-1));
+			}
+			else continue;
 		}
 
 		int t= -NegaScout(tmpBoard, depth-1, -n, -max(alpha,m), view^1, tmpList); //null window search
 
 		if(t>m){
 			if(n==beta || depth<3 || t>=beta) m=t; //first branch || depth<3(scout returns exact value) || fali high 
-			else m= -NegaScout(tmpBoard, depth-1, -beta, -t, view, tmpList); //research
+			else m= -NegaScout(tmpBoard, depth-1, -beta, -t, view, tmpList); //re-search
 		}
 
 		if(m>=beta){
@@ -64,7 +82,7 @@ SCORE NegaScout(BOARD &board, int depth, SCORE alpha, SCORE beta, CLR view, vect
 			return m; //beta cut off
 		}
 
-		n=max(alpha,m)+1; //set value for null windows search
+		n=max(alpha,m)+1; //set value for null window search
 	}
 	return m;
 }
