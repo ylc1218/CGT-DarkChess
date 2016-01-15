@@ -1,5 +1,6 @@
 #ifndef SEARCH
 #define SEARCH
 	#include "anqi.hh"
-	MOV genMove(const BOARD &board);
+	#include "HashTable.h"
+	MOV genMove(const BOARD &board, HashTbl &hashTbl);
 #endif

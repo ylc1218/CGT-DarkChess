@@ -12,6 +12,7 @@
 #include<cstdlib>
 #include<cstring>
 #include"anqi.hh"
+#include"HashTable.h"
 #ifdef _WINDOWS
 #include<windows.h>
 #endif
@@ -86,6 +87,7 @@ void BOARD::NewGame() {
 	who=-1;
 	for(POS p=0;p<32;p++)fin[p]=FIN_X;
 	for(int i=0;i<14;i++)cnt[i]=tbl[GetLevel(FIN(i))];
+	hashVal = getHashVal(fin);
 }
 
 static FIN find(char c) {
@@ -107,7 +109,7 @@ static POS mkpos(int x,int y) {
 
 void BOARD::Init(int Board[32], int Piece[14], int Color) {
     for (int i = 0 ; i < 14; ++i) {
-	cnt[i] = Piece[i];
+		cnt[i] = Piece[i];
     }
     for (int i = 0 ; i < 32; ++i) {
 	switch(Board[i]) {
@@ -130,11 +132,12 @@ void BOARD::Init(int Board[32], int Piece[14], int Color) {
 	}
     }
     who = Color;
+    hashVal=getHashVal(fin);
 }
 
 void BOARD::Init(char Board[32], int Piece[14], int Color) {
     for (int i = 0 ; i < 14; ++i) {
-	cnt[i] = Piece[i];
+		cnt[i] = Piece[i];
     }
     for (int i = 0 ; i < 32; ++i) {
 	switch(Board[i]) {
@@ -157,6 +160,7 @@ void BOARD::Init(char Board[32], int Piece[14], int Color) {
 	}
     }
     who = Color;
+    hashVal=getHashVal(fin);
 }
 
 int BOARD::LoadGame(const char *fn) {
@@ -193,6 +197,7 @@ int BOARD::LoadGame(const char *fn) {
 	}
 
 	fclose(fp);
+	hashVal=getHashVal(fin);
 	return r;
 }
 
@@ -366,7 +371,7 @@ int BOARD::MoveGen(MOVLST &lst, bool quiescent) const {
 	return lst.num;
 }
 
-/*int BOARD::MoveGen(MOVLST &lst) const {
+/*int BOARD::MoveGen(MOVLST &lst,  bool quiescent) const {
 	if(who==-1)return false;
 	lst.num=0;
 	for(POS p=0;p<32;p++) {
@@ -445,7 +450,7 @@ bool BOARD::ChkValid(MOV m) const {
 void BOARD::Flip(POS p,FIN f) {
 	if(f==FIN_X) {
 		int i,sum=0;
-		for(i=0;i<14;i++)    sum+=cnt[i];
+		for(i=0;i<14;i++) sum+=cnt[i];
 		sum=rand()%sum;
 		for(i=0;i<14;i++)if((sum-=cnt[i])<0)break;
 		f=FIN(i);
@@ -454,10 +459,15 @@ void BOARD::Flip(POS p,FIN f) {
 	cnt[f]--;
 	if(who==-1)who=GetColor(f);
 	who^=1;
+	hashVal= modHashVal(hashVal, FIN_X, p);
+	hashVal= modHashVal(hashVal, f, p);
 }
 
 void BOARD::Move(MOV m) {
 	if(m.ed!=m.st) {
+		hashVal = modHashVal(hashVal, fin[m.st], m.st);
+		hashVal = modHashVal(hashVal, fin[m.ed], m.ed);
+		hashVal = modHashVal(hashVal, fin[m.st], m.ed);
 		fin[m.ed]=fin[m.st];
 		fin[m.st]=FIN_E;
 		who^=1;
@@ -468,11 +478,14 @@ void BOARD::Move(MOV m) {
 
 void BOARD::DoMove(MOV m, FIN f) {
     if (m.ed!=m.st) {
-	fin[m.ed]=fin[m.st];
-	fin[m.st]=FIN_E;
-	who^=1;
+    	hashVal = modHashVal(hashVal, fin[m.st], m.st);
+		hashVal = modHashVal(hashVal, fin[m.ed], m.ed);
+		hashVal = modHashVal(hashVal, fin[m.st], m.ed);
+		fin[m.ed]=fin[m.st];
+		fin[m.st]=FIN_E;
+		who^=1;
     }
     else {
-	Flip(m.st, f);
+		Flip(m.st, f);
     }
 }

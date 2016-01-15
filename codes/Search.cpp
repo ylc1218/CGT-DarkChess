@@ -22,6 +22,9 @@ SCORE evaluate(const BOARD &board, vector<MOV> mvlist){ //evaluate by poit of "b
 	if(DEBUG){
 		for(int i=0;i<mvlist.size();i++) fprintf(flog, "(%d-%d) ", mvlist[i].st, mvlist[i].ed);
 		fprintf(flog,"\n");
+		MOVLST lst;
+		board.MoveGen(lst, false);
+		fprintf(flog, "lstnum=%d\n", lst.num);
 		board.Display(flog);
 	}
 
@@ -43,54 +46,62 @@ SCORE evaluate(const BOARD &board, vector<MOV> mvlist){ //evaluate by poit of "b
 	return cnt[board.who]-cnt[board.who^1];
 }
 
-SCORE NegaScout(BOARD &board, int depth, SCORE alpha, SCORE beta, vector<MOV> mvlist, int unflipCnt){
+SCORE NegaScout(BOARD &board, int depth, SCORE alpha, SCORE beta, vector<MOV> mvlist, int unflipCnt, HashTbl &hashTbl){
 	//todo: hash
 	MOVLST lst;
 	board.MoveGen(lst, false);
-	
-	//terminate //todo: timing constraint
-	if(depth<=0){ //quiescent search
+	if(depth>0 && unflipCnt>0) lst.mov[lst.num++]=MOV(-1,-1); //null move (assume flip)
+
+	//todo: timing constraint
+	if(depth<=0 || lst.num==0){ //quiescent search
 		board.MoveGen(lst, true); //reproduce move list : true for quiescent search
 	}
-	if(lst.num==0) return evaluate(board, mvlist);
+	if(lst.num==0) return evaluate(board, mvlist); //terminate 
+
+	SCORE m=-INF, n=beta; //fail soft
+	//check hash
+	if(depth>0){
+		EVal e = hashTbl.find(board.hashVal, board.fin, board.who);
+		if(e.valid && e.layer>=depth){ //hash hit
+			if(e.type==ETYP_E) return e.value; //is exact value: return
+			else m=e.value; //failed high value : use as bound
+		}
+	}
 
 	//search deeper
-	SCORE m=-INF, n=beta; //fail soft
-	for(int i=0;i<=lst.num;i++){
+	for(int i=0;i<lst.num;i++){
 		vector<MOV> tmpList=mvlist;
 		BOARD tmpBoard(board);
 		int isFlip=0;
-		if(i<lst.num){
+		if(!(lst.mov[i].st==-1 && lst.mov[i].ed==-1)){
 			tmpBoard.Move(lst.mov[i]); //do move
-			tmpList.push_back(lst.mov[i]);
 		}
 		else{ //assume flip
-			if(depth>0 && unflipCnt>0){ //not quiescent search & can flip
-				tmpBoard.who^=1;
-				tmpList.push_back(MOV(-1,-1));
-				isFlip=1;
-			}
-			else continue;
+			tmpBoard.who^=1;
+			isFlip=1;
 		}
+		tmpList.push_back(lst.mov[i]);
 
-		int t= -NegaScout(tmpBoard, depth-1, -n, -max(alpha,m), tmpList, unflipCnt-isFlip); //null window search
+		int t= -NegaScout(tmpBoard, depth-1, -n, -max(alpha,m), tmpList, unflipCnt-isFlip, hashTbl); //null window search
 
 		if(t>m){
 			if(n==beta || (depth>0 && depth<3) || t>=beta) m=t; //first branch || depth<3(scout returns exact value) || fali high 
-			else m= -NegaScout(tmpBoard, depth-1, -beta, -t, tmpList, unflipCnt-isFlip); //re-search
+			else m= -NegaScout(tmpBoard, depth-1, -beta, -t, tmpList, unflipCnt-isFlip, hashTbl); //re-search
 		}
 
 		if(m>=beta){
 			if(DEBUG) fprintf(flog, "beta cutoff %d %d\n", m, beta);
+			if(depth>0) hashTbl.insert(board, m, depth, ETYP_H);
 			return m; //beta cut off
 		}
 
 		n=max(alpha,m)+1; //set value for null window search
 	}
+	if(depth>0) hashTbl.insert(board, m, depth, ETYP_E);
 	return m;
 }
 
-MOV genMove(const BOARD &board){
+MOV genMove(const BOARD &board, HashTbl &hashTbl){
 	POS p;
 	POS firstMove[4]={5,6,25,26};
 	if(board.who==-1){ //new game
@@ -114,7 +125,7 @@ MOV genMove(const BOARD &board){
 		tmpBoard.Move(lst.mov[i]);
 		vector<MOV> mvlist;
 		mvlist.push_back(lst.mov[i]);
-		SCORE s=-NegaScout(tmpBoard, SEARCH_MV_DEP, -INF, INF, mvlist, unflipCnt);
+		SCORE s=-NegaScout(tmpBoard, SEARCH_MV_DEP, -INF, INF, mvlist, unflipCnt, hashTbl);
 		if(DEBUG) fprintf(flog, "mv=%d-%d, score=%d\n", lst.mov[i].st, lst.mov[i].ed, s);
 		if(s>mvScore){
 			mvScore=s;
@@ -139,8 +150,12 @@ MOV genMove(const BOARD &board){
 
 				vector<MOV> mvlist;
 				mvlist.push_back(MOV(p,p));
-				SCORE s = -NegaScout(tmpBoard, SEARCH_FLIP_DEP, -INF, INF, mvlist, unflipCnt-1);
-				if(DEBUG) fprintf(flog, "mv=%d-%d, score=%d\n", p, unflipFin[j], s);
+				SCORE s = -NegaScout(tmpBoard, SEARCH_FLIP_DEP, -INF, INF, mvlist, unflipCnt-1, hashTbl);
+				if(DEBUG){
+					MOVLST tmpLst;
+					tmpBoard.MoveGen(tmpLst, false);
+					fprintf(flog, "mv=%d-%d, score=%d, #move=%d\n", p, unflipFin[j], s, tmpLst.num);
+				}
 				if(s>mvScore) gt+=cnt;
 				else if(s<mvScore) gt-=cnt;
 				sum+=(s-mvScore)*cnt;

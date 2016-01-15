@@ -60,6 +60,7 @@ struct BOARD {
 	CLR who;     // 現在輪到那一方下
 	FIN fin[32]; // 各個位置上面擺了啥
 	int cnt[14]; // 各種棋子的未翻開數量
+	long long hashVal; //hashVal % BKT_SIZE = hashIdx
 
 	void NewGame();              // 開新遊戲
 	int  LoadGame(const char*);  // 載入遊戲並傳回時限(單位:秒)

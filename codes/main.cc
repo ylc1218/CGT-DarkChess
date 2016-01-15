@@ -13,6 +13,7 @@
 #include"Protocol.h"
 #include"ClientSocket.h"
 #include"Search.h"
+#include"HashTable.h"
 
 #ifdef _WINDOWS
 #include<windows.h>
@@ -86,7 +87,7 @@ SCORE SearchMin(const BOARD &B,int dep,int cut) {
 	return ret;
 }
 
-MOV Play(const BOARD &B) {
+MOV Play(const BOARD &B, HashTbl &hashTbl) {
 #ifdef _WINDOWS
 	Tick=GetTickCount();
 	TimeOut = (DEFAULTTIME-3)*1000;
@@ -108,7 +109,7 @@ MOV Play(const BOARD &B) {
 	c=rand()%c;
 	for(p=0;p<32;p++)if(B.fin[p]==FIN_X&&--c<0)break;
 	return MOV(p,p);*/
-	return genMove(B);
+	return genMove(B, hashTbl);
 }
 
 FIN type2fin(int type) {
@@ -159,9 +160,12 @@ int main(int argc, char* argv[]) {
 #endif
 
 	BOARD B;
+	HashTbl *hashTbl = new HashTbl();
+	hashTbl->init();
+
 	if (argc!=3) {
 	    TimeOut=(B.LoadGame("board.txt")-3)*1000;
-	    if(!B.ChkLose())Output(Play(B));
+	    if(!B.ChkLose())Output(Play(B, *hashTbl));
 	    return 0;
 	}
 	Protocol *protocol;
@@ -181,11 +185,12 @@ int main(int argc, char* argv[]) {
 	TimeOut = (DEFAULTTIME-3)*1000;
 
 	B.Init(iCurrentPosition, iPieceCount, (color==2)?(-1):(int)color);
+	
 
 	MOV m;
 	if(turn) // §Ú¥ý
 	{
-	    m = Play(B);
+	    m = Play(B, *hashTbl);
 	    sprintf(src, "%c%c",(m.st%4)+'a', m.st/4+'1');
 	    sprintf(dst, "%c%c",(m.ed%4)+'a', m.ed/4+'1');
 	    protocol->send(src, dst);
@@ -218,7 +223,7 @@ int main(int argc, char* argv[]) {
 	B.Display();
 	while(1)
 	{
-	    m = Play(B);
+	    m = Play(B, *hashTbl);
 	    sprintf(src, "%c%c",(m.st%4)+'a', m.st/4+'1');
 	    sprintf(dst, "%c%c",(m.ed%4)+'a', m.ed/4+'1');
 	    protocol->send(src, dst);
