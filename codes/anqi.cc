@@ -413,6 +413,22 @@ bool BOARD::ChkLose() const {
 	return !fDark&&MoveGen(lst, false)==0;
 }
 
+int BOARD::ChkEnd() const { //-1:not end, CLR: CLR wins
+	if(who==-1)return -1;
+
+	bool fLive[2]={false,false};
+	for(int i=0;i<14;i++){
+		if(cnt[i]!=0) fLive[GetColor(FIN(i))]=true;
+	}
+
+	
+	for(POS p=0;p<32;p++)
+		if(fin[p]<FIN_X) fLive[GetColor(fin[p])]=true;
+
+	if(fLive[0]==fLive[1]) return -1;
+	return fLive[0]==true? 0:1;
+}
+
 bool BOARD::ChkValid(MOV m) const {
 	if(m.ed!=m.st) {
 		MOVLST lst;

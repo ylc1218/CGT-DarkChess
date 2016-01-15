@@ -68,6 +68,7 @@ struct BOARD {
 	int  MoveGen(MOVLST&, bool quiescent) const; // 列出所有走法(走子+吃子,不包括翻子)
 	                             // 回傳走法數量
 	bool ChkLose() const;        // 檢查當前玩家(who)是否輸了
+	int ChkEnd() const;		 // check if current game ends, return -1 or the winner
 	bool ChkValid(MOV) const;    // 檢查是否為合法走法
 	void Flip(POS,FIN=FIN_X);    // 翻子
 	void Move(MOV);              // 移動 or 吃子
