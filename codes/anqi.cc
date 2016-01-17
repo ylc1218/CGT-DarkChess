@@ -326,6 +326,13 @@ void BOARD::Display(FILE* flog) const {
 #endif
 }
 
+int sortScore_cmp(const void* a, const void* b) {
+	MOV lhs = *(MOV*)a, rhs=*(MOV*)b;
+	if(lhs.s==rhs.s) return 0;
+	return lhs.s>rhs.s?-1:1;
+}
+
+
 int BOARD::MoveGen(MOVLST &lst, bool quiescent) const {
 	if(who==-1)return false;
 	lst.num=0;

@@ -1,5 +1,8 @@
 #ifndef ANQI
 #define ANQI
+#include <algorithm>
+#include <cstdlib>
+using namespace std;
 
 // (color)
 //  0 = 紅方 (大寫字母)
@@ -39,22 +42,35 @@ enum FIN {
 // 24 25 26 27
 // 28 29 30 31
 typedef int POS;
+typedef int SCORE;
 
 struct MOV {
 	POS st; // 起點
 	POS ed; // 終點 // 若 ed==st 表示是翻子
+	SCORE s;
 
-	MOV() {}
-	MOV(POS s,POS e):st(s),ed(e) {}
+	MOV() {s=0;}
+	MOV(POS s,POS e):st(s),ed(e) {s=0;}
 
 	bool operator==(const MOV &x) const {return st==x.st&&ed==x.ed;}
 	MOV operator=(const MOV &x) {st=x.st;ed=x.ed;return MOV(x.st, x.ed);}
 };
 
+int sortScore_cmp(const void* a, const void* b);
+
 struct MOVLST {
 	int num;     // 走法數(移動+吃子,不包括翻子)
 	MOV mov[68];
+	MOVLST(){num=0;}
+
+	void sortScore(){ 
+		//std::sort(&mov[0],&mov[num], &cmp);
+		qsort(mov, num, sizeof(mov[0]), sortScore_cmp);
+	}
+
 };
+
+
 
 struct BOARD {
 	CLR who;     // 現在輪到那一方下

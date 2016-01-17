@@ -87,7 +87,7 @@ SCORE SearchMin(const BOARD &B,int dep,int cut) {
 	return ret;
 }
 
-MOV Play(const BOARD &B, HashTbl &hashTbl) {
+MOV Play(const BOARD &B, SearchEngine &search) {
 #ifdef _WINDOWS
 	Tick=GetTickCount();
 	TimeOut = (DEFAULTTIME-3)*1000;
@@ -109,7 +109,7 @@ MOV Play(const BOARD &B, HashTbl &hashTbl) {
 	c=rand()%c;
 	for(p=0;p<32;p++)if(B.fin[p]==FIN_X&&--c<0)break;
 	return MOV(p,p);*/
-	return genMove(B, hashTbl);
+	return search.genMove(B);
 }
 
 FIN type2fin(int type) {
@@ -160,12 +160,11 @@ int main(int argc, char* argv[]) {
 #endif
 
 	BOARD B;
-	HashTbl *hashTbl = new HashTbl();
-	hashTbl->init();
+	SearchEngine search;
 
 	if (argc!=3) {
 	    TimeOut=(B.LoadGame("board.txt")-3)*1000;
-	    if(!B.ChkLose())Output(Play(B, *hashTbl));
+	    if(!B.ChkLose())Output(Play(B, search));
 	    return 0;
 	}
 	Protocol *protocol;
@@ -190,7 +189,7 @@ int main(int argc, char* argv[]) {
 	MOV m;
 	if(turn) // 我先
 	{
-	    m = Play(B, *hashTbl);
+	    m = Play(B, search);
 	    sprintf(src, "%c%c",(m.st%4)+'a', m.st/4+'1');
 	    sprintf(dst, "%c%c",(m.ed%4)+'a', m.ed/4+'1');
 	    protocol->send(src, dst);
@@ -199,10 +198,13 @@ int main(int argc, char* argv[]) {
 		color = protocol->get_color(mov);
 	    B.who = color;
 	    B.DoMove(m, chess2fin(mov[3]));
+	    search.addHistory(m);
+
 	    protocol->recv(mov, remain_time);
 	    m.st = mov[0] - 'a' + (mov[1] - '1')*4;
 	    m.ed = (mov[2]=='(')?m.st:(mov[3] - 'a' + (mov[4] - '1')*4);
 	    B.DoMove(m, chess2fin(mov[3]));
+	    search.addHistory(m);
 	}
 	else // 對方先
 	{
@@ -219,11 +221,12 @@ int main(int argc, char* argv[]) {
 	    m.st = mov[0] - 'a' + (mov[1] - '1')*4;
 	    m.ed = (mov[2]=='(')?m.st:(mov[3] - 'a' + (mov[4] - '1')*4);
 	    B.DoMove(m, chess2fin(mov[3]));
+	    search.addHistory(m);
 	}
 	B.Display();
 	while(1)
 	{
-	    m = Play(B, *hashTbl);
+	    m = Play(B, search);
 	    sprintf(src, "%c%c",(m.st%4)+'a', m.st/4+'1');
 	    sprintf(dst, "%c%c",(m.ed%4)+'a', m.ed/4+'1');
 	    protocol->send(src, dst);
@@ -231,12 +234,14 @@ int main(int argc, char* argv[]) {
 	    m.st = mov[0] - 'a' + (mov[1] - '1')*4;
 	    m.ed = (mov[2]=='(')?m.st:(mov[3] - 'a' + (mov[4] - '1')*4);
 	    B.DoMove(m, chess2fin(mov[3]));
+	    search.addHistory(m);
 	    B.Display();
 
 	    protocol->recv(mov, remain_time);
 	    m.st = mov[0] - 'a' + (mov[1] - '1')*4;
 	    m.ed = (mov[2]=='(')?m.st:(mov[3] - 'a' + (mov[4] - '1')*4);
 	    B.DoMove(m, chess2fin(mov[3]));
+	    search.addHistory(m);
 	    B.Display();
 	}
 
