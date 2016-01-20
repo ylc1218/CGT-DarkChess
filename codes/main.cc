@@ -198,13 +198,11 @@ int main(int argc, char* argv[]) {
 		color = protocol->get_color(mov);
 	    B.who = color;
 	    B.DoMove(m, chess2fin(mov[3]));
-	    search.addHistory(m);
 
 	    protocol->recv(mov, remain_time);
 	    m.st = mov[0] - 'a' + (mov[1] - '1')*4;
 	    m.ed = (mov[2]=='(')?m.st:(mov[3] - 'a' + (mov[4] - '1')*4);
 	    B.DoMove(m, chess2fin(mov[3]));
-	    search.addHistory(m);
 	}
 	else // ¹ï¤è¥ý
 	{
@@ -221,7 +219,6 @@ int main(int argc, char* argv[]) {
 	    m.st = mov[0] - 'a' + (mov[1] - '1')*4;
 	    m.ed = (mov[2]=='(')?m.st:(mov[3] - 'a' + (mov[4] - '1')*4);
 	    B.DoMove(m, chess2fin(mov[3]));
-	    search.addHistory(m);
 	}
 	B.Display();
 	while(1)
@@ -234,14 +231,12 @@ int main(int argc, char* argv[]) {
 	    m.st = mov[0] - 'a' + (mov[1] - '1')*4;
 	    m.ed = (mov[2]=='(')?m.st:(mov[3] - 'a' + (mov[4] - '1')*4);
 	    B.DoMove(m, chess2fin(mov[3]));
-	    search.addHistory(m);
 	    B.Display();
 
 	    protocol->recv(mov, remain_time);
 	    m.st = mov[0] - 'a' + (mov[1] - '1')*4;
 	    m.ed = (mov[2]=='(')?m.st:(mov[3] - 'a' + (mov[4] - '1')*4);
 	    B.DoMove(m, chess2fin(mov[3]));
-	    search.addHistory(m);
 	    B.Display();
 	}
 

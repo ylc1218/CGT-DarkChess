@@ -25,16 +25,7 @@ static const char *nam[16]={
 	"¢Ý","¡@"
 };
 
-static const POS ADJ[32][4]={
-	{ 1,-1,-1, 4},{ 2,-1, 0, 5},{ 3,-1, 1, 6},{-1,-1, 2, 7},
-	{ 5, 0,-1, 8},{ 6, 1, 4, 9},{ 7, 2, 5,10},{-1, 3, 6,11},
-	{ 9, 4,-1,12},{10, 5, 8,13},{11, 6, 9,14},{-1, 7,10,15},
-	{13, 8,-1,16},{14, 9,12,17},{15,10,13,18},{-1,11,14,19},
-	{17,12,-1,20},{18,13,16,21},{19,14,17,22},{-1,15,18,23},
-	{21,16,-1,24},{22,17,20,25},{23,18,21,26},{-1,19,22,27},
-	{25,20,-1,28},{26,21,24,29},{27,22,25,30},{-1,23,26,31},
-	{29,24,-1,-1},{30,25,28,-1},{31,26,29,-1},{-1,27,30,-1}
-};
+
 
 CLR GetColor(FIN f) {
 	return f<FIN_X?f/7:-1;
@@ -86,8 +77,12 @@ void BOARD::NewGame() {
 	static const int tbl[]={1,2,2,2,2,2,5};
 	who=-1;
 	for(POS p=0;p<32;p++)fin[p]=FIN_X;
-	for(int i=0;i<14;i++)cnt[i]=tbl[GetLevel(FIN(i))];
+	for(int i=0;i<14;i++){
+		cnt[i]=tbl[GetLevel(FIN(i))];
+		brightCnt[i]=0;
+	}
 	hashVal = getHashVal(fin);
+	totalDark=32, totalBright=0;
 }
 
 static FIN find(char c) {
@@ -110,29 +105,34 @@ static POS mkpos(int x,int y) {
 void BOARD::Init(int Board[32], int Piece[14], int Color) {
     for (int i = 0 ; i < 14; ++i) {
 		cnt[i] = Piece[i];
+		brightCnt[i]=0;
     }
     for (int i = 0 ; i < 32; ++i) {
-	switch(Board[i]) {
-	    case  0: fin[i] = FIN_E;break;
-	    case  1: fin[i] = FIN_K;cnt[FIN_K]--;break;
-	    case  2: fin[i] = FIN_G;cnt[FIN_G]--;break;
-	    case  3: fin[i] = FIN_M;cnt[FIN_M]--;break;
-	    case  4: fin[i] = FIN_R;cnt[FIN_R]--;break;
-	    case  5: fin[i] = FIN_N;cnt[FIN_N]--;break;
-	    case  6: fin[i] = FIN_C;cnt[FIN_C]--;break;
-	    case  7: fin[i] = FIN_P;cnt[FIN_P]--;break;
-	    case  8: fin[i] = FIN_X;break;
-	    case  9: fin[i] = FIN_k;cnt[FIN_k]--;break;
-	    case 10: fin[i] = FIN_g;cnt[FIN_g]--;break;
-	    case 11: fin[i] = FIN_m;cnt[FIN_m]--;break;
-	    case 12: fin[i] = FIN_r;cnt[FIN_r]--;break;
-	    case 13: fin[i] = FIN_n;cnt[FIN_n]--;break;
-	    case 14: fin[i] = FIN_c;cnt[FIN_c]--;break;
-	    case 15: fin[i] = FIN_p;cnt[FIN_p]--;break;
-	}
+		switch(Board[i]) {
+		    case  0: fin[i] = FIN_E;break;
+		    case  1: fin[i] = FIN_K;cnt[FIN_K]--, brightCnt[FIN_K]++;break;
+		    case  2: fin[i] = FIN_G;cnt[FIN_G]--, brightCnt[FIN_G]++;break;
+		    case  3: fin[i] = FIN_M;cnt[FIN_M]--, brightCnt[FIN_M]++;break;
+		    case  4: fin[i] = FIN_R;cnt[FIN_R]--, brightCnt[FIN_R]++;break;
+		    case  5: fin[i] = FIN_N;cnt[FIN_N]--, brightCnt[FIN_N]++;break;
+		    case  6: fin[i] = FIN_C;cnt[FIN_C]--, brightCnt[FIN_C]++;break;
+		    case  7: fin[i] = FIN_P;cnt[FIN_P]--, brightCnt[FIN_P]++;break;
+		    case  8: fin[i] = FIN_X;break;
+		    case  9: fin[i] = FIN_k;cnt[FIN_k]--, brightCnt[FIN_k]++;break;
+		    case 10: fin[i] = FIN_g;cnt[FIN_g]--, brightCnt[FIN_g]++;break;
+		    case 11: fin[i] = FIN_m;cnt[FIN_m]--, brightCnt[FIN_m]++;break;
+		    case 12: fin[i] = FIN_r;cnt[FIN_r]--, brightCnt[FIN_r]++;break;
+		    case 13: fin[i] = FIN_n;cnt[FIN_n]--, brightCnt[FIN_n]++;break;
+		    case 14: fin[i] = FIN_c;cnt[FIN_c]--, brightCnt[FIN_c]++;break;
+		    case 15: fin[i] = FIN_p;cnt[FIN_p]--, brightCnt[FIN_p]++;break;
+		}
     }
     who = Color;
     hashVal=getHashVal(fin);
+    for(int i=0;i<14;i++){
+    	totalDark+=cnt[i];
+    	totalBright+=brightCnt[i];
+    }
 }
 
 void BOARD::Init(char Board[32], int Piece[14], int Color) {
@@ -140,27 +140,31 @@ void BOARD::Init(char Board[32], int Piece[14], int Color) {
 		cnt[i] = Piece[i];
     }
     for (int i = 0 ; i < 32; ++i) {
-	switch(Board[i]) {
-	    case '-': fin[i] = FIN_E;break;
-	    case 'K': fin[i] = FIN_K;cnt[FIN_K]--;break;
-	    case 'G': fin[i] = FIN_G;cnt[FIN_G]--;break;
-	    case 'M': fin[i] = FIN_M;cnt[FIN_M]--;break;
-	    case 'R': fin[i] = FIN_R;cnt[FIN_R]--;break;
-	    case 'N': fin[i] = FIN_N;cnt[FIN_N]--;break;
-	    case 'C': fin[i] = FIN_C;cnt[FIN_C]--;break;
-	    case 'P': fin[i] = FIN_P;cnt[FIN_P]--;break;
-	    case 'X': fin[i] = FIN_X;break;
-	    case 'k': fin[i] = FIN_k;cnt[FIN_k]--;break;
-	    case 'g': fin[i] = FIN_g;cnt[FIN_g]--;break;
-	    case 'm': fin[i] = FIN_m;cnt[FIN_m]--;break;
-	    case 'r': fin[i] = FIN_r;cnt[FIN_r]--;break;
-	    case 'n': fin[i] = FIN_n;cnt[FIN_n]--;break;
-	    case 'c': fin[i] = FIN_c;cnt[FIN_c]--;break;
-	    case 'p': fin[i] = FIN_p;cnt[FIN_p]--;break;
-	}
+		switch(Board[i]) {
+		    case '-': fin[i] = FIN_E;break;
+		    case 'K': fin[i] = FIN_K;cnt[FIN_K]--, brightCnt[FIN_K]++;break;
+		    case 'G': fin[i] = FIN_G;cnt[FIN_G]--, brightCnt[FIN_G]++;break;
+		    case 'M': fin[i] = FIN_M;cnt[FIN_M]--, brightCnt[FIN_M]++;break;
+		    case 'R': fin[i] = FIN_R;cnt[FIN_R]--, brightCnt[FIN_R]++;break;
+		    case 'N': fin[i] = FIN_N;cnt[FIN_N]--, brightCnt[FIN_N]++;break;
+		    case 'C': fin[i] = FIN_C;cnt[FIN_C]--, brightCnt[FIN_C]++;break;
+		    case 'P': fin[i] = FIN_P;cnt[FIN_P]--, brightCnt[FIN_P]++;break;
+		    case 'X': fin[i] = FIN_X;break;
+		    case 'k': fin[i] = FIN_k;cnt[FIN_k]--, brightCnt[FIN_k]++;break;
+		    case 'g': fin[i] = FIN_g;cnt[FIN_g]--, brightCnt[FIN_g]++;break;
+		    case 'm': fin[i] = FIN_m;cnt[FIN_m]--, brightCnt[FIN_m]++;break;
+		    case 'r': fin[i] = FIN_r;cnt[FIN_r]--, brightCnt[FIN_r]++;break;
+		    case 'n': fin[i] = FIN_n;cnt[FIN_n]--, brightCnt[FIN_n]++;break;
+		    case 'c': fin[i] = FIN_c;cnt[FIN_c]--, brightCnt[FIN_c]++;break;
+		    case 'p': fin[i] = FIN_p;cnt[FIN_p]--, brightCnt[FIN_p]++;break;
+		}
     }
     who = Color;
     hashVal=getHashVal(fin);
+    for(int i=0;i<14;i++){
+    	totalDark+=cnt[i];
+    	totalBright+=brightCnt[i];
+    }
 }
 
 int BOARD::LoadGame(const char *fn) {
@@ -441,6 +445,12 @@ int BOARD::ChkEnd() const { //-1:not end, CLR: CLR wins
 	return fLive[0]==true? 0:1;
 }
 
+bool BOARD::HasDark() const{
+	for(int i=0;i<14;i++)
+		if(cnt[i]>0) return false;
+	return true;
+}
+
 bool BOARD::ChkValid(MOV m) const {
 	if(m.ed!=m.st) {
 		MOVLST lst;
@@ -454,6 +464,7 @@ bool BOARD::ChkValid(MOV m) const {
 	return false;
 }
 
+
 void BOARD::Flip(POS p,FIN f) {
 	if(f==FIN_X) {
 		int i,sum=0;
@@ -463,7 +474,7 @@ void BOARD::Flip(POS p,FIN f) {
 		f=FIN(i);
 	}
 	fin[p]=f;
-	cnt[f]--;
+	cnt[f]--, brightCnt[f]++;
 	if(who==-1)who=GetColor(f);
 	who^=1;
 	hashVal= modHashVal(hashVal, FIN_X, p);
@@ -472,6 +483,7 @@ void BOARD::Flip(POS p,FIN f) {
 
 void BOARD::Move(MOV m) {
 	if(m.ed!=m.st) {
+		if(fin[m.ed]!=FIN_E) brightCnt[fin[m.ed]]--;
 		hashVal = modHashVal(hashVal, fin[m.st], m.st);
 		hashVal = modHashVal(hashVal, fin[m.ed], m.ed);
 		hashVal = modHashVal(hashVal, fin[m.st], m.ed);
@@ -485,6 +497,7 @@ void BOARD::Move(MOV m) {
 
 void BOARD::DoMove(MOV m, FIN f) {
     if (m.ed!=m.st) {
+    	if(fin[m.ed]!=FIN_E) brightCnt[fin[m.ed]]--;
     	hashVal = modHashVal(hashVal, fin[m.st], m.st);
 		hashVal = modHashVal(hashVal, fin[m.ed], m.ed);
 		hashVal = modHashVal(hashVal, fin[m.st], m.ed);

@@ -44,6 +44,17 @@ enum FIN {
 typedef int POS;
 typedef int SCORE;
 
+static const POS ADJ[32][4]={
+	{ 1,-1,-1, 4},{ 2,-1, 0, 5},{ 3,-1, 1, 6},{-1,-1, 2, 7},
+	{ 5, 0,-1, 8},{ 6, 1, 4, 9},{ 7, 2, 5,10},{-1, 3, 6,11},
+	{ 9, 4,-1,12},{10, 5, 8,13},{11, 6, 9,14},{-1, 7,10,15},
+	{13, 8,-1,16},{14, 9,12,17},{15,10,13,18},{-1,11,14,19},
+	{17,12,-1,20},{18,13,16,21},{19,14,17,22},{-1,15,18,23},
+	{21,16,-1,24},{22,17,20,25},{23,18,21,26},{-1,19,22,27},
+	{25,20,-1,28},{26,21,24,29},{27,22,25,30},{-1,23,26,31},
+	{29,24,-1,-1},{30,25,28,-1},{31,26,29,-1},{-1,27,30,-1}
+};
+
 struct MOV {
 	POS st; // 起點
 	POS ed; // 終點 // 若 ed==st 表示是翻子
@@ -76,7 +87,9 @@ struct BOARD {
 	CLR who;     // 現在輪到那一方下
 	FIN fin[32]; // 各個位置上面擺了啥
 	int cnt[14]; // 各種棋子的未翻開數量
+	int brightCnt[14]; //count of each type of chess faced-up
 	long long hashVal; //hashVal % BKT_SIZE = hashIdx
+	int totalDark, totalBright;
 
 	void NewGame();              // 開新遊戲
 	int  LoadGame(const char*);  // 載入遊戲並傳回時限(單位:秒)
@@ -86,7 +99,9 @@ struct BOARD {
 	                             // 回傳走法數量
 	bool ChkLose() const;        // 檢查當前玩家(who)是否輸了
 	int ChkEnd() const;		 // check if current game ends, return -1 or the winner
+	bool HasDark() const; //check if still has dark chess
 	bool ChkValid(MOV) const;    // 檢查是否為合法走法
+	int getChessCnt() const;
 	void Flip(POS,FIN=FIN_X);    // 翻子
 	void Move(MOV);              // 移動 or 吃子
 	void DoMove(MOV m, FIN f) ;

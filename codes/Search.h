@@ -8,6 +8,19 @@
 	
 	typedef int SCORE;
 
+	/*struct BfsNode{
+		POS p;
+		int d;
+		bool operator<(const BfsNode& a, const BfsNode& b) { //reversed the comparison to achieve min heap wihtout passing extra arguments to the priority queue.
+		  return a.d > b.d;
+		}
+		BfsNode(){}
+		BfsNode(POS p, int d){
+			this->p=p;
+			this->d=d;
+		}
+	};*/
+
 	struct RepeatHistory{
 		int p;
 		MOV mov[REP_SIZE];
@@ -45,7 +58,7 @@
 		}
 
 		MOV genMove(const BOARD &board);
-		SCORE NegaScout(BOARD &board, int depth, SCORE alpha, SCORE beta, vector<MOV> mvlist, int unflipCnt);
+		SCORE NegaScout(BOARD &board, int depth, SCORE alpha, SCORE beta, MOVLST &hist, int unflipCnt);
 		void addHistory(MOV mov){
 			history.add(mov);
 		}

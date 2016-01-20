@@ -1,7 +1,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <algorithm>
-#include <vector>
+#include <queue>
 #include "HashTable.h"
 #include "anqi.hh"
 #include "Search.h"
@@ -18,17 +18,7 @@ const int STAT_VAL[]={12863,6431,3215,1607,803,401,200};
 FILE* flog = fopen("mylog.txt", "w+");
 
 
-SCORE evaluate(const BOARD &board, MOVLST &hist){ //evaluate by poit of "board.who"
-	//todo: advanced evaluating function
-	if(DEBUG){
-		for(int i=0;i<hist.num;i++) fprintf(flog, "(%d-%d) ", hist.mov[i].st, hist.mov.[i].ed);
-		fprintf(flog,"\n");
-		board.Display(flog);
-	}
-
-	//check lose
-	if (board.ChkLose()) return -WIN;
-
+SCORE getPawnValue(const BOARD &board){
 	int s[2]={0,0};
 	for(POS p=0;p<32;p++){
 		const CLR c=GetColor(board.fin[p]);
@@ -42,6 +32,79 @@ SCORE evaluate(const BOARD &board, MOVLST &hist){ //evaluate by poit of "board.w
 		fflush(flog);
 	}
 	return s[board.who]-s[board.who^1];
+}
+
+int bfs(const BOARD &board, POS s){
+	if(GetLevel(board.fin[s])==LVL_C) return 0;
+
+	queue<POS> que;
+	SCORE score=0;
+	int dist[32];
+	POS nowP, nextP;
+	FIN nowF, nextF;
+	for(int i=0;i<32;i++) dist[i]=INF;
+	
+	que.push(s), dist[s]=0;
+	while(!que.empty()){
+		nowP = que.front(), que.pop();
+		nowF=board.fin[nowP];
+		for(int i=0;i<4;i++) { //adjacent location
+			nextP=ADJ[nowP][i];
+			if(nextP==-1 || dist[nextP]!=INF) continue; //boarder
+			nextF=board.fin[nextP]; //adjacent piece
+			if(nowF<14 && !ChkEats(nowF,nextF)) continue;
+			dist[nextP]=dist[nowP]+1;
+			que.push(nextP);
+
+			if(ChkEats(nowF,nextF)) score+=(10-dist[nextP])*2*STAT_VAL[nextF]/100;
+		}
+	}
+
+}
+
+SCORE getAttackValue(const BOARD &board){
+	if(board.HasDark() || board.totalDark+board.totalBright>12) return 0;
+	POS pos[2][32];
+	int cnt[2]={0};
+	SCORE s[2]={0};
+
+	for(int i=0;i<32;i++){ //put fin into corresponding chess array
+		if(board.fin[i]>=14) continue; //is FIN_E or FIN_X
+		CLR clr = GetColor(board.fin[i]);
+		pos[clr][cnt[clr]++]=i;
+	}
+
+	int self=board.who, oppo=board.who^1;
+	for(int i=0;i<cnt[self];i++){
+		/*for(int j=0;j<cnt[oppo];j++){
+			POS selfP=pos[self][i], oppoP=pos[oppo][j];
+			int dist = abs(selfP/4-oppoP/4)+abs(selfP%4-oppoP%4);
+			if(GetLevel(board.fin[selfP])!=LVL_C && ChkEats(board.fin[selfP], board.fin[oppoP]))
+				s[self]+=(10-dist)*2*STAT_VAL[board.fin[oppoP]]/100;
+			if(GetLevel(board.fin[oppoP])!=LVL_C && ChkEats(board.fin[oppoP], board.fin[selfP]))
+				s[oppo]+=(10-dist)*2*STAT_VAL[board.fin[selfP]]/100;
+		}*/
+		s[self]+=bfs(board, pos[self][i]);
+	}
+	for(int i=0;i<cnt[oppo];i++)
+		s[oppo]+=bfs(board, pos[oppo][i]);	
+	
+	return s[self]-s[oppo];
+}
+
+SCORE evaluate(const BOARD &board, MOVLST &hist){ //evaluate by poit of "board.who"
+	//todo: advanced evaluating function
+	if(DEBUG){
+		for(int i=0;i<hist.num;i++) fprintf(flog, "(%d-%d) ", hist.mov[i].st, hist.mov[i].ed);
+		fprintf(flog,"\n");
+		board.Display(flog);
+	}
+
+	
+	if (board.ChkLose()) return -WIN; //check lose
+	SCORE ps = getPawnValue(board);
+	SCORE as = getAttackValue(board);
+	return ps+as;
 }
 
 SCORE SearchEngine::NegaScout(BOARD &board, int depth, SCORE alpha, SCORE beta, MOVLST &hist, int unflipCnt){
