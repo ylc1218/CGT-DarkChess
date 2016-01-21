@@ -87,7 +87,8 @@ SCORE SearchMin(const BOARD &B,int dep,int cut) {
 	return ret;
 }
 
-MOV Play(const BOARD &B, SearchEngine &search) {
+MOV Play(const BOARD &B, SearchEngine &search, int remain_time) {
+/*
 #ifdef _WINDOWS
 	Tick=GetTickCount();
 	TimeOut = (DEFAULTTIME-3)*1000;
@@ -95,7 +96,7 @@ MOV Play(const BOARD &B, SearchEngine &search) {
 	Tick=clock();
 	TimeOut = (DEFAULTTIME-3)*CLOCKS_PER_SEC;
 #endif
-	/*POS p; int c=0;
+	POS p; int c=0;
 
 	// 新遊戲？隨機翻子
 	if(B.who==-1){p=rand()%32;printf("%d\n",p);return MOV(p,p);}
@@ -109,7 +110,7 @@ MOV Play(const BOARD &B, SearchEngine &search) {
 	c=rand()%c;
 	for(p=0;p<32;p++)if(B.fin[p]==FIN_X&&--c<0)break;
 	return MOV(p,p);*/
-	return search.genMove(B);
+	return search.genMove(B, remain_time);
 }
 
 FIN type2fin(int type) {
@@ -164,7 +165,7 @@ int main(int argc, char* argv[]) {
 
 	if (argc!=3) {
 	    TimeOut=(B.LoadGame("board.txt")-3)*1000;
-	    if(!B.ChkLose())Output(Play(B, search));
+	    if(!B.ChkLose())Output(Play(B, search, 900000));
 	    return 0;
 	}
 	Protocol *protocol;
@@ -189,7 +190,7 @@ int main(int argc, char* argv[]) {
 	MOV m;
 	if(turn) // 我先
 	{
-	    m = Play(B, search);
+	    m = Play(B, search, remain_time);
 	    sprintf(src, "%c%c",(m.st%4)+'a', m.st/4+'1');
 	    sprintf(dst, "%c%c",(m.ed%4)+'a', m.ed/4+'1');
 	    protocol->send(src, dst);
@@ -223,7 +224,7 @@ int main(int argc, char* argv[]) {
 	B.Display();
 	while(1)
 	{
-	    m = Play(B, search);
+	    m = Play(B, search, remain_time);
 	    sprintf(src, "%c%c",(m.st%4)+'a', m.st/4+'1');
 	    sprintf(dst, "%c%c",(m.ed%4)+'a', m.ed/4+'1');
 	    protocol->send(src, dst);
@@ -231,13 +232,13 @@ int main(int argc, char* argv[]) {
 	    m.st = mov[0] - 'a' + (mov[1] - '1')*4;
 	    m.ed = (mov[2]=='(')?m.st:(mov[3] - 'a' + (mov[4] - '1')*4);
 	    B.DoMove(m, chess2fin(mov[3]));
-	    B.Display();
+		B.Display();
 
 	    protocol->recv(mov, remain_time);
 	    m.st = mov[0] - 'a' + (mov[1] - '1')*4;
 	    m.ed = (mov[2]=='(')?m.st:(mov[3] - 'a' + (mov[4] - '1')*4);
 	    B.DoMove(m, chess2fin(mov[3]));
-	    B.Display();
+		B.Display();
 	}
 
 	return 0;

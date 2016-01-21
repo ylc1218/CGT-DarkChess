@@ -57,7 +57,7 @@
 			p_hashTbl->init();
 		}
 
-		MOV genMove(const BOARD &board);
+		MOV genMove(const BOARD &board, int remain_time);
 		SCORE NegaScout(BOARD &board, int depth, SCORE alpha, SCORE beta, MOVLST &hist, int unflipCnt);
 		void addHistory(MOV mov){
 			history.add(mov);

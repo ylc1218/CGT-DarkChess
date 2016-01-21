@@ -16,14 +16,15 @@
 #ifdef _WINDOWS
 #include<windows.h>
 #endif
+#define ANSI_COLOR_RED     "\x1b[31m"
+#define ANSI_COLOR_GREEN   "\x1b[32m"
+#define ANSI_COLOR_BLUE    "\x1b[36m"
+#define ANSI_COLOR_RESET   "\x1b[0m"
+
 
 static const char *tbl="KGMRNCPkgmrncpX-";
 
-static const char *nam[16]={
-	"帥","仕","相","硨","傌","炮","兵",
-	"將","士","象","車","馬","砲","卒",
-	"Ｏ","　"
-};
+
 
 
 
@@ -129,6 +130,7 @@ void BOARD::Init(int Board[32], int Piece[14], int Color) {
     }
     who = Color;
     hashVal=getHashVal(fin);
+    totalDark=totalBright=0;
     for(int i=0;i<14;i++){
     	totalDark+=cnt[i];
     	totalBright+=brightCnt[i];
@@ -138,6 +140,7 @@ void BOARD::Init(int Board[32], int Piece[14], int Color) {
 void BOARD::Init(char Board[32], int Piece[14], int Color) {
     for (int i = 0 ; i < 14; ++i) {
 		cnt[i] = Piece[i];
+		brightCnt[i]=0;
     }
     for (int i = 0 ; i < 32; ++i) {
 		switch(Board[i]) {
@@ -161,6 +164,7 @@ void BOARD::Init(char Board[32], int Piece[14], int Color) {
     }
     who = Color;
     hashVal=getHashVal(fin);
+    totalBright=totalDark=0;
     for(int i=0;i<14;i++){
     	totalDark+=cnt[i];
     	totalBright+=brightCnt[i];
@@ -208,16 +212,11 @@ int BOARD::LoadGame(const char *fn) {
 void BOARD::Display() const {
 #ifdef _WINDOWS
 	HANDLE hErr=GetStdHandle(STD_ERROR_HANDLE);
-#endif
 	for(int i=0;i<8;i++) {
-#ifdef _WINDOWS
 		SetConsoleTextAttribute(hErr,8);
-#endif
 		for(int j=0;j<4;j++)fprintf(stderr,"[%02d]",mkpos(i,j));
 		if(i==2) {
-#ifdef _WINDOWS
 			SetConsoleTextAttribute(hErr,12);
-#endif
 			fputs("  ",stderr);
 			for(int j=0;j<7;j++)for(int k=0;k<cnt[j];k++)fputs(nam[j],stderr);
 		}
@@ -225,47 +224,75 @@ void BOARD::Display() const {
 		for(int j=0;j<4;j++) {
 			const FIN f=fin[mkpos(i,j)];
 			const CLR c=GetColor(f);
-#ifdef _WINDOWS
 			SetConsoleTextAttribute(hErr,(c!=-1?12-c*2:7));
-#endif
 			fprintf(stderr," %s ",nam[fin[mkpos(i,j)]]);
 		}
 		if(i==0) {
-#ifdef _WINDOWS
 			SetConsoleTextAttribute(hErr,7);
-#endif
 			fputs("  輪到 ",stderr);
 			if(who==0) {
-#ifdef _WINDOWS
 				SetConsoleTextAttribute(hErr,12);
-#endif
 				fputs("紅方",stderr);
 			} else if(who==1) {
-#ifdef _WINDOWS
 				SetConsoleTextAttribute(hErr,10);
-#endif
 				fputs("黑方",stderr);
 			} else {
 				fputs("？？",stderr);
 			}
 		} else if(i==1) {
-#ifdef _WINDOWS
 			SetConsoleTextAttribute(hErr,7);
-#endif
 			fputs("  尚未翻出：",stderr);
 		} else if(i==2) {
-#ifdef _WINDOWS
 			SetConsoleTextAttribute(hErr,10);
-#endif
 			fputs("  ",stderr);
 			for(int j=7;j<14;j++)for(int k=0;k<cnt[j];k++)fputs(nam[j],stderr);
 		}
 		fputc('\n',stderr);
 	}
-#ifdef _WINDOWS
 	SetConsoleTextAttribute(hErr,7);
+#else
+	for(int i=0;i<8;i++) {
+		for(int j=0;j<4;j++)fprintf(stderr,"[%02d]",mkpos(7-i,j));
+		if(i==2) {
+			fputs("  ",stderr);
+			for(int j=0;j<7;j++)for(int k=0;k<cnt[j];k++)
+				fprintf(stderr,ANSI_COLOR_RED "%s" ANSI_COLOR_RESET ,nam[j]);
+			/*fprintf(stderr,"\n");
+			for(int j=7;j<14;j++)for(int k=0;k<cnt[j];k++)
+				fprintf(stderr,ANSI_COLOR_RED "%s" ANSI_COLOR_RESET ,nam[j]);*/
+		}
+		fputc('\n',stderr);
+		for(int j=0;j<4;j++) {
+			const FIN f=fin[mkpos(7-i,j)];
+			const CLR c=GetColor(f);
+		if(c==0)
+			fprintf(stderr, ANSI_COLOR_RED " %s " ANSI_COLOR_RESET,nam[fin[mkpos(7-i,j)]]);
+		else if(c==1)
+			fprintf(stderr, ANSI_COLOR_BLUE " %s " ANSI_COLOR_RESET,nam[fin[mkpos(7-i,j)]]);
+		else
+			fprintf(stderr, " %s " ,nam[fin[mkpos(7-i,j)]]);
+
+		}
+		if(i==0) {
+			fputs("  輪到 ",stderr);
+			if(who==0) {
+				fprintf(stderr,ANSI_COLOR_RED "%s" ANSI_COLOR_RESET ,"紅方");
+			} else if(who==1) {
+				fprintf(stderr,ANSI_COLOR_BLUE "%s" ANSI_COLOR_RESET ,"黑方");
+			} else {
+				fputs("？？",stderr);
+			}
+		} else if(i==1) {
+			fputs("  尚未翻出：",stderr);
+		} else if(i==2) {
+			fputs("  ",stderr);
+			for(int j=7;j<14;j++)for(int k=0;k<cnt[j];k++)fprintf(stderr,ANSI_COLOR_BLUE "%s" ANSI_COLOR_RESET ,nam[j]);
+		}
+		fputc('\n',stderr);
+	}
 #endif
 }
+
 
 
 void BOARD::Display(FILE* flog) const {
@@ -427,6 +454,11 @@ bool BOARD::ChkLose() const {
 
 	MOVLST lst;
 	return !fDark&&MoveGen(lst, false)==0;
+	/*for(int i=0;i<14;i++){
+		if(GetColor(FIN(i))!=who) continue;
+		if(cnt[i]>0 || brightCnt[i]>0) return false;
+	}
+	return true;*/
 }
 
 int BOARD::ChkEnd() const { //-1:not end, CLR: CLR wins
@@ -447,8 +479,8 @@ int BOARD::ChkEnd() const { //-1:not end, CLR: CLR wins
 
 bool BOARD::HasDark() const{
 	for(int i=0;i<14;i++)
-		if(cnt[i]>0) return false;
-	return true;
+		if(cnt[i]>0) return true;
+	return false;
 }
 
 bool BOARD::ChkValid(MOV m) const {
@@ -475,6 +507,8 @@ void BOARD::Flip(POS p,FIN f) {
 	}
 	fin[p]=f;
 	cnt[f]--, brightCnt[f]++;
+	totalDark--, totalBright++;
+
 	if(who==-1)who=GetColor(f);
 	who^=1;
 	hashVal= modHashVal(hashVal, FIN_X, p);
@@ -483,7 +517,10 @@ void BOARD::Flip(POS p,FIN f) {
 
 void BOARD::Move(MOV m) {
 	if(m.ed!=m.st) {
-		if(fin[m.ed]!=FIN_E) brightCnt[fin[m.ed]]--;
+		if(fin[m.ed]!=FIN_E){
+			brightCnt[fin[m.ed]]--;
+			totalBright--;
+		}
 		hashVal = modHashVal(hashVal, fin[m.st], m.st);
 		hashVal = modHashVal(hashVal, fin[m.ed], m.ed);
 		hashVal = modHashVal(hashVal, fin[m.st], m.ed);
@@ -497,7 +534,10 @@ void BOARD::Move(MOV m) {
 
 void BOARD::DoMove(MOV m, FIN f) {
     if (m.ed!=m.st) {
-    	if(fin[m.ed]!=FIN_E) brightCnt[fin[m.ed]]--;
+    	if(fin[m.ed]!=FIN_E){
+    		brightCnt[fin[m.ed]]--;
+    		totalBright--;
+    	}
     	hashVal = modHashVal(hashVal, fin[m.st], m.st);
 		hashVal = modHashVal(hashVal, fin[m.ed], m.ed);
 		hashVal = modHashVal(hashVal, fin[m.st], m.ed);
