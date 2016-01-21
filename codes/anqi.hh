@@ -1,6 +1,6 @@
 #ifndef ANQI
 #define ANQI
-//#define _WINDOWS
+#define _WINDOWS
 #include <algorithm>
 #include <cstdlib>
 using namespace std;
@@ -69,9 +69,9 @@ struct MOV {
 
 	MOV() {s=0;}
 	MOV(POS s,POS e):st(s),ed(e) {s=0;}
-
+	MOV(POS s,POS e,SCORE score):st(s),ed(e) {this->s=score;}
 	bool operator==(const MOV &x) const {return st==x.st&&ed==x.ed;}
-	MOV operator=(const MOV &x) {st=x.st;ed=x.ed;return MOV(x.st, x.ed);}
+	MOV operator=(const MOV &x) {st=x.st;ed=x.ed;s=x.s;return MOV(x.st, x.ed, x.s);}
 };
 
 int sortScore_cmp(const void* a, const void* b);
@@ -102,13 +102,11 @@ struct BOARD {
 	int  LoadGame(const char*);  // 載入遊戲並傳回時限(單位:秒)
 	void Display() const;        // 顯示到 stderr 上
 	void Display(FILE* flog) const;
-	int  MoveGen(MOVLST&, bool quiescent) const; // 列出所有走法(走子+吃子,不包括翻子)
+	int  MoveGen(MOVLST&, bool onlyEat) const; // 列出所有走法(走子+吃子,不包括翻子)
 	                             // 回傳走法數量
 	bool ChkLose() const;        // 檢查當前玩家(who)是否輸了
-	int ChkEnd() const;		 // check if current game ends, return -1 or the winner
-	bool HasDark() const; //check if still has dark chess
+	bool HasDark() const{return totalDark>0;}; //check if still has dark chess
 	bool ChkValid(MOV) const;    // 檢查是否為合法走法
-	int getChessCnt() const;
 	void Flip(POS,FIN=FIN_X);    // 翻子
 	void Move(MOV);              // 移動 or 吃子
 	void DoMove(MOV m, FIN f) ;

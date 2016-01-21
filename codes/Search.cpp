@@ -43,12 +43,11 @@ bool searchTimesUp() {
 #endif
 }
 
-SCORE getPawnValue(const BOARD &board){
+SCORE getPieceValue(const BOARD &board){
 	int s[2]={0,0};
 
 	for(int i=0;i<14;i++)
 		s[GetColor(FIN(i))]+=(board.cnt[i]+board.brightCnt[i])*DYN_VAL[FIN(i)];
-	
 	
 	if(DEBUG){
 		fprintf(flog, "s=%d (%d)\n", s[board.who]-s[board.who^1], board.who);
@@ -87,7 +86,6 @@ SCORE bfs(const BOARD &board, POS s){
 
 SCORE getAttackValue(const BOARD &board){
 	if(!isEndgame) return 0;
-	//printf("%d %d\n", board.totalDark, board.totalDark+board.totalBright);
 	POS pos[2][32];
 	int cnt[2]={0};
 	SCORE s[2]={0};
@@ -99,15 +97,14 @@ SCORE getAttackValue(const BOARD &board){
 	}
 
 	int self=board.who, oppo=board.who^1;
-	for(int i=0;i<cnt[self];i++)
-		s[self]+=bfs(board, pos[self][i]);
-	for(int i=0;i<cnt[oppo];i++)
-		s[oppo]+=bfs(board, pos[oppo][i]);	
+	for(int i=0;i<cnt[self];i++) s[self]+=bfs(board, pos[self][i]);
+	for(int i=0;i<cnt[oppo];i++) s[oppo]+=bfs(board, pos[oppo][i]);	
 	
 	return s[self]-s[oppo];
 }
 
 SCORE getPositionValue(const BOARD &board){
+	return 0;
 	SCORE s[2]={0};
 	for(int nowP=0;nowP<32;nowP++){
 		FIN f=board.fin[nowP];
@@ -139,7 +136,6 @@ SCORE getPositionValue(const BOARD &board){
 }
 
 SCORE evaluate(const BOARD &board, MOVLST &hist){ //evaluate by poit of "board.who"
-	//todo: advanced evaluating function
 	if(DEBUG){
 		for(int i=0;i<hist.num;i++) fprintf(flog, "(%d-%d) ", hist.mov[i].st, hist.mov[i].ed);
 		fprintf(flog,"\n");
@@ -148,12 +144,32 @@ SCORE evaluate(const BOARD &board, MOVLST &hist){ //evaluate by poit of "board.w
 
 	
 	if (board.ChkLose()) return -WIN; //check lose
-	SCORE pawnS = getPawnValue(board);
+	SCORE pieceS = getPieceValue(board);
 	SCORE attackS = getAttackValue(board);
 	SCORE positionS = getPositionValue(board);
-	//printf("%d %d %d\n", pawnS, attackS, positionS);
-	//printf("%d %d\n", board.totalDark, board.totalBright);
-	return pawnS+attackS+positionS;
+	return pieceS+attackS+positionS;
+}
+
+SCORE QuiescentSearch(BOARD &board, MOVLST &hist, bool canNull){
+	MOVLST lst;
+	SCORE maxScore=-INF;
+	board.MoveGen(lst, true); //reproduce move list : true for quiescent search
+	if(lst.num==0) return evaluate(board, hist); //terminate
+
+	if(canNull) lst.mov[lst.num++]=MOV(-1,-1);
+	for(int i=0;i<lst.num;i++){
+		BOARD tmpBoard(board);
+		hist.mov[hist.num++]=lst.mov[i];
+		if(!(lst.mov[i].st==-1 && lst.mov[i].ed==-1)) tmpBoard.Move(lst.mov[i]); //do move
+		else{ //assume null
+			tmpBoard.who^=1;
+			canNull=false;
+		}
+		SCORE s = -QuiescentSearch(tmpBoard, hist, canNull);
+		if(s>maxScore) maxScore=s;
+		hist.num--;
+	}
+	return maxScore;
 }
 
 SCORE SearchEngine::NegaScout(BOARD &board, int depth, SCORE alpha, SCORE beta, MOVLST &hist, int unflipCnt){
@@ -161,11 +177,17 @@ SCORE SearchEngine::NegaScout(BOARD &board, int depth, SCORE alpha, SCORE beta, 
 	board.MoveGen(lst, false);
 	if(depth>0 && unflipCnt>0) lst.mov[lst.num++]=MOV(-1,-1); //null move (assume flip)
 
-	//todo: timing constraint
-	if(depth<=0 || lst.num==0) //quiescent search
+	/*if(depth<=0 || lst.num==0) //quiescent search(need to be modified)
 		board.MoveGen(lst, true); //reproduce move list : true for quiescent search
-	
-	if(lst.num==0) return evaluate(board, hist); //terminate 
+	if(lst.num==0) return evaluate(board, hist); //terminate */
+
+	if(depth<=0 || lst.num==0){//quiescent search(need to be modified)
+		board.MoveGen(lst, true); //reproduce move list : true for quiescent search
+		if(lst.num==0) return evaluate(board, hist); //terminate
+
+		if(depth==0 || unflipCnt==1) lst.mov[lst.num++]=MOV(-1,-1); //can do NULL move
+		if(depth==0) unflipCnt=1;
+	}
 
 	SCORE m=-INF, n=beta; //fail soft
 	
@@ -181,8 +203,7 @@ SCORE SearchEngine::NegaScout(BOARD &board, int depth, SCORE alpha, SCORE beta, 
 	for(int i=0;i<lst.num;i++){
 		BOARD tmpBoard(board);
 		int isFlip=0;
-		if(!(lst.mov[i].st==-1 && lst.mov[i].ed==-1))
-			tmpBoard.Move(lst.mov[i]); //do move
+		if(!(lst.mov[i].st==-1 && lst.mov[i].ed==-1)) tmpBoard.Move(lst.mov[i]); //do move
 		else{ //assume flip
 			tmpBoard.who^=1;
 			isFlip=1;
@@ -190,7 +211,6 @@ SCORE SearchEngine::NegaScout(BOARD &board, int depth, SCORE alpha, SCORE beta, 
 		hist.mov[hist.num++]=lst.mov[i];
 
 		int t= -NegaScout(tmpBoard, depth-1, -n, -max(alpha,m), hist, unflipCnt-isFlip); //null window search
-
 		if(t>m){
 			if(n==beta || (depth>0 && depth<3) || t>=beta) m=t; //first branch || depth<3(scout returns exact value) || fali high 
 			else m= -NegaScout(tmpBoard, depth-1, -beta, -t, hist, unflipCnt-isFlip); //re-search
@@ -209,42 +229,15 @@ SCORE SearchEngine::NegaScout(BOARD &board, int depth, SCORE alpha, SCORE beta, 
 	return m;
 }
 
-MOV SearchEngine::genMove(const BOARD &board, int remain_time){
-	if(remain_time<80000){
-		printf("goint to timeout -> search 1 s\n");
-		DEFAULTTIME_S=DEFAULTTIME_F=4; //prevent timeout
-	}
-
-#ifdef _WINDOWS
-	sTick=GetTickCount();
-	sTimeOut = (DEFAULTTIME_S-3)*1000;
-#else
-	sTick=clock();
-	sTimeOut = (DEFAULTTIME_S-3)*CLOCKS_PER_SEC;
-#endif
-
-	POS p;
-	POS firstMove[4]={5,6,25,26};
-	int sdep=0;
-	if(board.who==-1){ //new game
-		p=firstMove[rand()%4];
-		return MOV(p,p);
-	}
-
-	//search for unfilp
-	vector<FIN> unflipFin;
-	for(int i=0;i<14;i++)
-		if(board.cnt[i]>0) unflipFin.push_back(FIN(i));
-	int unflipCnt=unflipFin.size();
-
-	//check endgame
+void checkEndGame(const BOARD &board){
 	if(!board.HasDark() || board.totalDark+board.totalBright<12) {
 		isEndgame=true;
 		DEFAULTTIME_S=5;
 		printf("Enter end game mode\n");
 	}
+}
 
-	//dyn piece val
+void checkUseless(const BOARD &board){
 	for(int i=board.who*7;i<board.who*7+7;i++){
 		bool useless=true;
 		if(board.cnt[i]==0 && board.brightCnt[i]==0) continue;
@@ -260,50 +253,54 @@ MOV SearchEngine::genMove(const BOARD &board, int remain_time){
 			DYN_VAL[i]=0;
 		}
 	}
+}
 
-	//nega scout (search for move)
+MOV SearchEngine::searchForMove(const BOARD &board, int unflipCnt){
+#ifdef _WINDOWS
+	sTick=GetTickCount();
+	sTimeOut = (DEFAULTTIME_S-3)*1000;
+#else
+	sTick=clock();
+	sTimeOut = (DEFAULTTIME_S-3)*CLOCKS_PER_SEC;
+#endif
+
 	MOVLST lst, hist;
-	SCORE mvScore=-INF;
-	MOV best_mv, best_flip;
-	int best_d=0;
+	MOV best_mv;
+	int sdep=0;
 
 	board.MoveGen(lst, false);
 
-	for(int d=0;d<=SEARCH_MV_DEP && ! searchTimesUp();d++){ //iterative deepening
-		if(d>0) lst.sortScore();
-		mvScore=-INF;
+	for(int d=0;d<=SEARCH_MV_DEP && !searchTimesUp(); d++,sdep++){ //iterative deepening
+		if(d>0) lst.sortScore(); //sort previous iteration scores to get better move ordering
+		best_mv.s=-INF; //discard prevois iteration result
 		for(int i=0;i<lst.num;i++) {
 			BOARD tmpBoard(board);
 			tmpBoard.Move(lst.mov[i]);
 			
 			hist.mov[hist.num++]=lst.mov[i];
-			SCORE s=-NegaScout(tmpBoard, d, -INF, INF, hist, unflipCnt);
+			lst.mov[i].s=-NegaScout(tmpBoard, d, -INF, INF, hist, unflipCnt);
 			hist.num--;
-			lst.mov[i].s=s;
 
-			if(DEBUG) fprintf(flog, "d:%d, mv=%d-%d, score=%d\n", d, lst.mov[i].st, lst.mov[i].ed, s);
-			if(s>mvScore){
-				mvScore=s;
-				best_mv=lst.mov[i];
-				best_d=d;
+			if(DEBUG) fprintf(flog, "d:%d, mv=%d-%d, score=%d\n", d, lst.mov[i].st, lst.mov[i].ed, lst.mov[i].s);
+			if(lst.mov[i].s>best_mv.s){
+				best_mv=lst.mov[i]; //update
+				best_mv.s=lst.mov[i].s;
 			}
-			if(s==WIN) break;
+			
+			if(best_mv.s==WIN) break;
 		}
-		sdep++;
 		printf("search %d depth done\n", d);
 
-		if(DEBUG) fprintf(flog, "d:%d, best score:%d, best_mv=(%d,%d)\n", d, mvScore, best_mv.st, best_mv.ed);
-		if(mvScore==WIN){
-			printf("#mv:%d, best score:%d, best_mv=(%d,%d)\n", lst.num, mvScore, best_mv.st, best_mv.ed);
-			printf("search depth:%d\n", sdep);
-			return best_mv; //cant flip || win , return the best move
-		}
+		if(DEBUG) fprintf(flog, "d:%d, best score:%d, best_mv=(%d,%d)\n", d, best_mv.s, best_mv.st, best_mv.ed);
+		
+		if(best_mv.s==WIN) break; //if win ,no need to search deeper
 	}
-	printf("#mv:%d, best score:%d, best_mv=(%d,%d)\n", lst.num, mvScore, best_mv.st, best_mv.ed);
+	printf("#mv:%d, best score:%d, best_mv=(%d,%d)\n", lst.num, best_mv.s, best_mv.st, best_mv.ed);
 	printf("search depth:%d\n", sdep);
-	if(unflipCnt==0) return best_mv;
-	
-	//nega scout (search for flip)
+	return best_mv;
+}
+
+MOV SearchEngine::searchForFlip(const BOARD &board, vector<FIN> &unflipFin, SCORE mvScore){
 #ifdef _WINDOWS
 	sTick=GetTickCount();
 	sTimeOut = (DEFAULTTIME_F-3)*1000;
@@ -311,19 +308,20 @@ MOV SearchEngine::genMove(const BOARD &board, int remain_time){
 	sTick=clock();
 	sTimeOut = (DEFAULTTIME_F-3)*CLOCKS_PER_SEC;
 #endif
-	int best_gt,best_sum;
-	SCORE flipScore;
-	MOVLST flst;
 
-	for(p=0;p<32;p++)
-		if(board.fin[p]==FIN_X) flst.mov[flst.num++]=MOV(p,p);
+	int best_gt,best_sum;
+	int sdep=0, unflipCnt=unflipFin.size();
+	MOV best_flip;
+	MOVLST lst, hist;
+
+	for(POS p=0;p<32;p++)
+		if(board.fin[p]==FIN_X) lst.mov[lst.num++]=MOV(p,p); //search for all unflip position
 	
-	sdep=0;
-	for(int d=0;d<=SEARCH_FLIP_DEP && !searchTimesUp();d++){ //iterative deepening
-		if(d>0) lst.sortScore();
-		best_gt=best_sum=flipScore=-INF;
-		for(int i=0;i<flst.num;i++) { //for each unflip position
-			p=flst.mov[i].st;
+	for(int d=0;d<=SEARCH_FLIP_DEP && !searchTimesUp(); d++,sdep++){ //iterative deepening
+		if(d>0) lst.sortScore();//sort previous iteration scores to get better move ordering
+		best_gt=best_sum=-INF; //discard previous iteration result
+		for(int i=0;i<lst.num;i++) { //for each unflip position
+			POS p=lst.mov[i].st;
 			int gt=0, sum=0;
 			for(int j=0;j<unflipCnt;j++){ //for each type of FIN
 				int cnt=board.cnt[unflipFin[j]];
@@ -333,29 +331,55 @@ MOV SearchEngine::genMove(const BOARD &board, int remain_time){
 				hist.mov[hist.num++]=MOV(p,p);
 				SCORE s = -NegaScout(tmpBoard, d, -INF, INF, hist, unflipCnt-1);
 				hist.num--;
-				if(DEBUG){
-					MOVLST tmpLst;
-					tmpBoard.MoveGen(tmpLst, false);
-					fprintf(flog, "mv=%d-%d, score=%d, #move=%d\n", p, unflipFin[j], s, tmpLst.num);
-				}
+				
 				if(s>mvScore) gt+=cnt;
 				else if(s<mvScore) gt-=cnt;
 				sum+=(s-mvScore)*cnt;
 			}
-			flst.mov[i].s=sum;
-			if(gt>best_gt || (gt==best_gt && sum>best_sum)){
-				best_gt=gt, best_sum=sum, best_flip=MOV(p,p);
-				flipScore=sum;
+			lst.mov[i].s=sum;
+			if(gt>best_gt || (gt==best_gt && sum>best_sum)){ //if flipping this position is better
+				best_gt=gt, best_sum=sum;
+				best_flip=MOV(p,p);
+				best_flip.s=best_gt;
 			}
 		}
 		if(DEBUG){
-			fprintf(flog, "best flip score:%d, best_flip=(%d,%d)\n", flipScore, best_flip.st, best_flip.ed);
+			fprintf(flog, "best_gt:%d, best_flip=(%d,%d)\n", best_gt, best_flip.st, best_flip.ed);
 			fflush(flog);
 		}
 		printf("flip %d depth done\n", d);
-		sdep++;
 	}
 	printf("best_gt:%d, best_flip=(%d,%d)\n", best_gt, best_flip.st, best_flip.ed);
 	printf("filp depth:%d\n", sdep);
-	return best_gt>=0 ? best_flip : best_mv;
+	return best_flip;
+}
+
+MOV SearchEngine::genMove(const BOARD &board, int remain_time){
+	if(remain_time<80000){
+		printf("goint to timeout -> search 1 s\n");
+		DEFAULTTIME_S=DEFAULTTIME_F=4; //prevent timeout(set to 4 because will -3 later)
+	}
+
+
+	if(board.who==-1){ //new game
+		POS firstMove[4]={5,6,25,26};
+		POS p=firstMove[rand()%4];
+		return MOV(p,p);
+	}
+
+	//search for unfilp
+	vector<FIN> unflipFin;
+	for(int i=0;i<14;i++)
+		if(board.cnt[i]>0) unflipFin.push_back(FIN(i));
+	int unflipCnt=unflipFin.size();
+
+	checkEndGame(board); //check endgame
+	checkUseless(board);//dyn piece val
+	
+
+	MOV best_mv = searchForMove(board, unflipCnt); //search for the best move
+	if(unflipCnt==0 || best_mv.s==WIN) return best_mv;
+	
+	MOV best_flip = searchForFlip(board, unflipFin, best_mv.s); //search for the best flip
+	return best_flip.s>=0? best_flip:best_mv;
 }

@@ -58,6 +58,8 @@
 		}
 
 		MOV genMove(const BOARD &board, int remain_time);
+		MOV searchForMove(const BOARD &board, int unflipCnt);
+		MOV searchForFlip(const BOARD &board, vector<FIN> &unflipFin, SCORE mvScore);
 		SCORE NegaScout(BOARD &board, int depth, SCORE alpha, SCORE beta, MOVLST &hist, int unflipCnt);
 		void addHistory(MOV mov){
 			history.add(mov);

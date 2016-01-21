@@ -364,7 +364,7 @@ int sortScore_cmp(const void* a, const void* b) {
 }
 
 
-int BOARD::MoveGen(MOVLST &lst, bool quiescent) const {
+int BOARD::MoveGen(MOVLST &lst, bool onlyEat) const {
 	if(who==-1)return false;
 	lst.num=0;
 	int x=rand()%32;
@@ -393,7 +393,7 @@ int BOARD::MoveGen(MOVLST &lst, bool quiescent) const {
 			}
 		}
 	}
-	if(quiescent) return lst.num;
+	if(onlyEat) return lst.num;
 
 	x=rand()%32;
 	for(POS p=x;p<x+32;p++) {
@@ -409,37 +409,8 @@ int BOARD::MoveGen(MOVLST &lst, bool quiescent) const {
 	return lst.num;
 }
 
-/*int BOARD::MoveGen(MOVLST &lst,  bool quiescent) const {
-	if(who==-1)return false;
-	lst.num=0;
-	for(POS p=0;p<32;p++) {
-		const FIN pf=fin[p];
-		if(GetColor(pf)!=who)continue;
-		const LVL pl=GetLevel(pf);
-		for(int z=0;z<4;z++) {
-			const POS q=ADJ[p][z];
-			if(q==-1)continue;
-			const FIN qf=fin[q];
-			if(pl!=LVL_C){if(!ChkEats(pf,qf))continue;}
-			else if(qf!=FIN_E)continue;
-			lst.mov[lst.num++]=MOV(p,q);
-		}
-		if(pl!=LVL_C)continue;
-		for(int z=0;z<4;z++) {
-			int c=0;
-			for(POS q=p;(q=ADJ[q][z])!=-1;) {
-				const FIN qf=fin[q];
-				if(qf==FIN_E||++c!=2)continue;
-				if(qf!=FIN_X&&GetColor(qf)!=who)lst.mov[lst.num++]=MOV(p,q);
-				break;
-			}
-		}
-	}
-	return lst.num;
-}*/
-
 bool BOARD::ChkLose() const {
-	if(who==-1)return false;
+	/*if(who==-1)return false;
 
 	bool fDark=false;
 	for(int i=0;i<14;i++) {
@@ -453,34 +424,12 @@ bool BOARD::ChkLose() const {
 	if(!fLive)return true;
 
 	MOVLST lst;
-	return !fDark&&MoveGen(lst, false)==0;
-	/*for(int i=0;i<14;i++){
+	return !fDark&&MoveGen(lst, false)==0;*/
+	for(int i=0;i<14;i++){
 		if(GetColor(FIN(i))!=who) continue;
 		if(cnt[i]>0 || brightCnt[i]>0) return false;
 	}
-	return true;*/
-}
-
-int BOARD::ChkEnd() const { //-1:not end, CLR: CLR wins
-	if(who==-1)return -1;
-
-	bool fLive[2]={false,false};
-	for(int i=0;i<14;i++){
-		if(cnt[i]!=0) fLive[GetColor(FIN(i))]=true;
-	}
-
-	
-	for(POS p=0;p<32;p++)
-		if(fin[p]<FIN_X) fLive[GetColor(fin[p])]=true;
-
-	if(fLive[0]==fLive[1]) return -1;
-	return fLive[0]==true? 0:1;
-}
-
-bool BOARD::HasDark() const{
-	for(int i=0;i<14;i++)
-		if(cnt[i]>0) return true;
-	return false;
+	return true;
 }
 
 bool BOARD::ChkValid(MOV m) const {
