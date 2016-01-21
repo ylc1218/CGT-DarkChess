@@ -1,6 +1,5 @@
 #ifndef ANQI
 #define ANQI
-#define _WINDOWS
 #include <algorithm>
 #include <cstdlib>
 using namespace std;

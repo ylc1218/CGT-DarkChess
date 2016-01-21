@@ -104,7 +104,6 @@ SCORE getAttackValue(const BOARD &board){
 }
 
 SCORE getPositionValue(const BOARD &board){
-	return 0;
 	SCORE s[2]={0};
 	for(int nowP=0;nowP<32;nowP++){
 		FIN f=board.fin[nowP];
