@@ -1,6 +1,7 @@
 *.exe
 *.out
 *.zip
-upload/*
-papers/*
-tcg_2015_final_project/*
+*.log
+*.aux
+*.gz
+00-local/*
