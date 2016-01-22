@@ -1,5 +1,6 @@
 *.exe
 *.out
 *.zip
+upload/*
 papers/*
 tcg_2015_final_project/*

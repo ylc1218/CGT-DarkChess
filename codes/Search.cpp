@@ -182,9 +182,10 @@ SCORE SearchEngine::NegaScout(BOARD &board, int depth, SCORE alpha, SCORE beta, 
 
 	if(depth<=0 || lst.num==0){//quiescent search(need to be modified)
 		board.MoveGen(lst, true); //reproduce move list : true for quiescent search
-		if(lst.num==0) return evaluate(board, hist); //terminate
+		if(lst.num==0 || (depth<0 && unflipCnt==0))
+			return evaluate(board, hist); //terminate(no eats move need to be performed) || last move is null move in quiescent search
 
-		if(depth==0 || unflipCnt==1) lst.mov[lst.num++]=MOV(-1,-1); //can do NULL move
+		lst.mov[lst.num++]=MOV(-1,-1); //can do NULL move
 		if(depth==0) unflipCnt=1;
 	}
 
